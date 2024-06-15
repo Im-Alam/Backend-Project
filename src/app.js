@@ -8,7 +8,6 @@ const app = express()
 
 //We need more packages for our work: cors(cros origin resource sharing), cookie-parser, 
 //For any middlewares, we use app.use(cors()) for using middleware or doing configuration settings
-
 //app.use(cors())    //It is generic use of cros, we an configure it as below:
 app.use(cors({
     origin: process.env.CORS_ORIGIN,
