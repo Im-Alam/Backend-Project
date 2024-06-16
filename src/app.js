@@ -30,7 +30,7 @@ app.use(express.urlencoded({    //Even not passing anything to urlencoded will d
     limit: '16kb',
 }))
 
-//Configuration to save files, ocuments,images etc in public folder
+//Configuration to save files, documents,images etc in public folder
 app.use(express.static("public"))
 
 //Configuration for CRUD operation on user cookies in a browser
