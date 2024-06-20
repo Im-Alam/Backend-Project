@@ -41,7 +41,7 @@ const userSchema = new Schema({
     ],
     /**
      * This(watchHistory) field makes our project complicated and of next level
-     * Wewill use basic queries like insert many, delete many etc
+     * We will use basic queries like insert many, delete many etc
      * But we will use a special mongoose aggregation pipeline module called "mongoose-aggregate-pagenate-v2"
      * "mongoose-aggregate-pagenate-v2" : It helps in writing aggregation queries.
      * aggregation pipeline itself is a crash course

@@ -14,9 +14,9 @@ app.use(cors({
     credentials: true
 }))     //There are some more configurations to explore
 
-//When our app runs it has to accept data in many formats, let it be json, BUT HOW much CABN IT ACCEPT
+//When our app runs it has to accept data in many formats, let it be json, BUT HOW much CAN IT ACCEPT
 //WILL not setting LIMIT lead to server crash
-//We set limit to prevent server crash
+//We set limit to prevent server crash in case of DOS
 app.use(express.json({
     limit: '16kb',
 
