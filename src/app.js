@@ -36,29 +36,23 @@ app.use(express.static("public"))
 //Configuration for CRUD operation on user cookies in a browser
 app.use(cookieParser()) //We can pass optios also
 
+//routes
+import userRouter from "./routes/user.router.js"
+
+//Routes declaration
+//app.get() was used when routes and controller bothe are written in app.js
+
+//Here we will use app.use for using middleware before routing
 
 
+//app.use("/user", userRouter)
+//https://localhost:8000/user/register
+
+//If we are defining our api then we should encorpoorate it in the rooute as below:
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+app.use("/api/v1/user", userRouter)
+//https://localhost:8000/api/v1/user/regiter
 
 
 
