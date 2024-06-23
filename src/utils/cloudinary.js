@@ -25,6 +25,6 @@ const uploadOnCloudinary = async (localFilePath)=>{
         return null
     }
 }
-
+//We must delete file from local server in both case of sucssful upload or failed upload.
 
 export {uploadOnCloudinary}
