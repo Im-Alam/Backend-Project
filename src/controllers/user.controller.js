@@ -25,16 +25,18 @@ const userRegister = asyncHandler(async(req, res)=>{
     const {fullname, email, username, password} = req.body
     console.log({"email":email})
 
+    /*
     //VALIDATING THE FIELDS {{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}
 
-    //We have to check the proper format of fields. We can do by running if else on each fiel or we can do as below:
-    
-    // if(fullname===""){
-    //     throw new apiError(400, "Full name required")
-    // }
+        //We have to check the proper format of fields. We can do by running if else on each fiel or we can do as below:
+        
+        // if(fullname===""){
+        //     throw new apiError(400, "Full name required")
+        // }
 
-    //?????What is predicate function? Is it call back. some takes predicate fumction
-    //Below if statement runs for each value in array due to some() method of array
+        //?????What is predicate function? Is it call back. some takes predicate fumction
+        //Below if statement runs for each value in array due to some() method of array
+    */
     if([fullname,email,username,password].some((field)=>(field?.trim()===""))){
         throw new apiError(400, "All fields required")
     }
@@ -44,7 +46,7 @@ const userRegister = asyncHandler(async(req, res)=>{
     //User.findOne({email})
     
     //Below code is demonstration of checking email OR username to be existing in database.
-    const existedUser = User.findOne({
+    const existedUser = await User.findOne({
         $or:[{email},{username}]
     })
 
@@ -53,10 +55,14 @@ const userRegister = asyncHandler(async(req, res)=>{
     }
 
 
-    //BEFORE UPLOADING FILE HANDELING AND VALIDATING
+    //BEFORE UPLOADING, FILE HANDELING AND VALIDATING
     //through express we get acess of req.body, through multer we get req.fles  (Its extra feature only becoz of middleware multer)
     const localAvatarPath = req.files?.avatar[0]?.path 
-    const localCoverImagePath = req.files?.coverImage[0]?.path
+    //const localCoverImagePath = req.files?.coverImage[0]?.path
+    let localCoverImagePath;
+    if(req.files && Array.isArray(req.files.coverImage) && req.files.coverImage.length>0){
+        localCoverImagePath = req.files?.coverImage[0].path
+    }
     //console.log(req.files, req.body)....
 
     //avatar is required field, we should check its existence.
@@ -74,6 +80,8 @@ const userRegister = asyncHandler(async(req, res)=>{
         throw new apiError(400, "No avatar file on cloudinary")
     }
 
+    
+
     //Entry to database
     const user = await User.create({
         fullname,
@@ -85,7 +93,8 @@ const userRegister = asyncHandler(async(req, res)=>{
     })
     //Checking weather user is created/ data is entred?
     //const createdUser = User.findById(user._id)
-    //Using below .select() we can select the required field, there is another way too.
+    //Using below select() we can select the required field, there is another way too
+    
     const createdUser = User.findById(user._id).select(
         "-password -refreshToken"
     )
@@ -96,7 +105,7 @@ const userRegister = asyncHandler(async(req, res)=>{
 
     //If sucessfully entered into database:
     //Response
-    return res.sta
+    return res.status(200).json(apiResponse(200, createdUser, "user registered"))
 
 })
 
