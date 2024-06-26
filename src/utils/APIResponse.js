@@ -4,11 +4,11 @@ class apiResponse{
     constructor(
         statusCode,
         data,
-        messsage = 'sucess'
+        messsage = 'success'
     ){
         this.statusCode = statusCode
         this.data  = data
-        this.message = message
+        this.message = messsage
         this.success = statusCode < 400  //Status code less than 400, [see server response status code]
 
     }

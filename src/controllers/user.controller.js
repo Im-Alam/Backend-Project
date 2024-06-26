@@ -4,6 +4,26 @@ import { apiError } from "../utils/APIError.js";
 import {User} from "../model/user.model.js";
 import {uploadOnCloudinary} from "../utils/cloudinary.js";
 import { apiResponse } from "../utils/APIResponse.js";
+import { configDotenv } from "dotenv";
+
+const generateAccessTokenAndRefreshToken = async(userId)=>{
+    try{
+        const user = await User.findById(userId)
+        const accessToken = await user.generateAcessToken()
+        const refreshToken = await user.generateRefreshToken()
+
+        //We have user object, we have to add acess token to user object:
+        user.refreshToken = refreshToken
+        //To save the user object in database: Whle saving data to mogoode db, all validation are initiated and it saving fails
+        //if any required firld is left empty. So we set validatinOnSave = false
+        await user.save({validatBeforeSave:false})
+
+        return {accessToken, refreshToken}
+    }
+    catch(error){
+        throw new apiError(500, "Something went wrong while generating Tokens")
+    }
+}
 
 
 
@@ -22,8 +42,7 @@ const userRegister = asyncHandler(async(req, res)=>{
 
     //Data coming from form or json, we can get it through req.body()
     //Data coming from url is handled in different way
-    const {fullname, email, username, password} = req.body
-    console.log({"email":email})
+    const {fullName, email, username, password} = req.body
 
     /*
     //VALIDATING THE FIELDS {{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}
@@ -37,7 +56,7 @@ const userRegister = asyncHandler(async(req, res)=>{
         //?????What is predicate function? Is it call back. some takes predicate fumction
         //Below if statement runs for each value in array due to some() method of array
     */
-    if([fullname,email,username,password].some((field)=>(field?.trim()===""))){
+    if([fullName,email,username,password].some((field)=>(field?.trim()===""))){
         throw new apiError(400, "All fields required")
     }
     //Now we have to check wheather user already exist or not. For this purpose we have to use user model and communicate with  database.
@@ -66,6 +85,10 @@ const userRegister = asyncHandler(async(req, res)=>{
     //console.log(req.files, req.body)....
 
     //avatar is required field, we should check its existence.
+
+    //console.log(localAvatarPath, localCoverImagePath)
+    //console.log("cloudinary", req.files)
+
     if(!localAvatarPath){
         throw new apiError(400, "avatar is required")
     }
@@ -84,12 +107,12 @@ const userRegister = asyncHandler(async(req, res)=>{
 
     //Entry to database
     const user = await User.create({
-        fullname,
+        fullName: fullName,
         avatar : avatar.url,
         coverImage : coverImage?.url || "",
         email,
         password,
-        username: username.toLower()
+        username: username.toLowerCase()
     })
     //Checking weather user is created/ data is entred?
     //const createdUser = User.findById(user._id)
@@ -102,11 +125,124 @@ const userRegister = asyncHandler(async(req, res)=>{
     if(!createdUser){
         throw new apiError(500, "Something went wrong while registering the user")
     }
-
+    //console.log("Created user", createdUser)
     //If sucessfully entered into database:
     //Response
-    return res.status(200).json(apiResponse(200, createdUser, "user registered"))
+    return res.status(201)
 
 })
 
-export {userRegister}
+
+
+
+const loginUser = asyncHandler(async(req,res)=>{
+    /**
+     * TO DOs:
+     * Take user input from frontend: username & password
+     * Check if username and password are in valid format
+     * ckeck for presence of username in database
+     *      If absent then return user not available
+     * Match the password in db and given by user
+     * If matched, assign acess token and refresh token
+     *      else: wrong username or password
+     * SEND cookies(secure cookies)
+     */
+
+    const {username, email, password}= req.body
+
+    if(!username && !email){
+        throw new apiError(400, "Username or email required")
+    }
+
+    //To ckeck either username or emil is available in database.
+    const user = await User.findOne({
+        $or:[{username},{email}]
+    })
+
+    console.log(user)
+
+    if(!user){
+        throw new apiError(404, "User doesn't exist")
+    }
+
+    //Checking password using bcrypt:
+    const isValidpassword = await user.isCorrectPassword(password)
+
+    if(!isValidpassword){
+        throw new apiError(401, "Invalid user credential")
+    }
+
+
+    //Generating access token and refresh token:
+    const {accessToken, refreshToken} = await generateAccessTokenAndRefreshToken(user._id)
+
+    //Now we have to send data to user, We must filter out irrelevat information and perform security measures
+    const loggedInUser = user.select("-password -refreshToken")
+
+    //Sending access token cookies:
+    const options= {
+        httpOnly:true,
+        secure:true
+    } //This option is sent with cookies to not let it modified from frontend
+
+    // In response we can send as many cookie as we want
+    res.status(200)
+    .cookie("accessToken", accessToken, options)
+    .cookie("refreshToken", refreshToken, options)
+    .json(
+        new apiResponse(
+            200,
+            {
+                user: loggedInUser, 
+                acessToken: accessToken, 
+                refreshToken: refreshToken
+
+            },
+            "User loggedin sucessfully"
+        )
+    )
+
+    
+})
+
+
+
+
+const logoutUser = asyncHandler(async(req, res)=>{
+    /**
+     * We an delete acess token and refresh token that user have
+     * But how we will acess which token user have
+     * Do we need to run query that given usedid, and i will log you out: No, this way we will logout any user from other user page.
+     * How do we do?
+     *      We inject our own middleware,
+     */
+    //req.user._id: It returns user object created during authorization
+    //We will use another method to find and update accesstoken
+    await User.findOneAndUpdate(  //No need to store return, becoz only running of this function completes our task.
+        req.user._id,
+        {
+            $set:{refreshToken:undefined}   
+        },
+        {
+            new:true
+        },
+    )
+
+    const options = {
+        httpOnly: true,
+        secure: true
+    }
+
+    return res.status(200)
+    .clearCookie("accessToken", options)
+    .clearCookie("refreshToken", options)
+    .json(new apiResponse(200, {}, "User logged out"))
+
+})
+
+
+export {
+    userRegister,
+    loginUser,
+    logoutUser
+}

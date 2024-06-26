@@ -52,8 +52,7 @@ const userSchema = new Schema({
         required: [true, "password is required"]     //This format display message if password is not provided
     },
     refreshToken: {
-        type: String,
-        required: true
+        type: String
     }
 
 },{timestamps: true}   //It add two extra field, createdAt and updatedAt
