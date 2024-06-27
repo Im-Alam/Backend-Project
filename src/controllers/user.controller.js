@@ -5,11 +5,13 @@ import {User} from "../model/user.model.js";
 import {uploadOnCloudinary} from "../utils/cloudinary.js";
 import { apiResponse } from "../utils/APIResponse.js";
 import { configDotenv } from "dotenv";
+import jwt from 'jsonwebtoken';
 
 const generateAccessTokenAndRefreshToken = async(userId)=>{
     try{
         const user = await User.findById(userId)
-        const accessToken = await user.generateAcessToken()
+        const accessToken = await user.generateAccessToken()
+        
         const refreshToken = await user.generateRefreshToken()
 
         //We have user object, we have to add acess token to user object:
@@ -19,6 +21,7 @@ const generateAccessTokenAndRefreshToken = async(userId)=>{
         await user.save({validatBeforeSave:false})
 
         return {accessToken, refreshToken}
+
     }
     catch(error){
         throw new apiError(500, "Something went wrong while generating Tokens")
@@ -150,6 +153,8 @@ const loginUser = asyncHandler(async(req,res)=>{
 
     const {username, email, password}= req.body
 
+    console.log(username, email, password)
+
     if(!username && !email){
         throw new apiError(400, "Username or email required")
     }
@@ -158,8 +163,6 @@ const loginUser = asyncHandler(async(req,res)=>{
     const user = await User.findOne({
         $or:[{username},{email}]
     })
-
-    console.log(user)
 
     if(!user){
         throw new apiError(404, "User doesn't exist")
@@ -177,7 +180,15 @@ const loginUser = asyncHandler(async(req,res)=>{
     const {accessToken, refreshToken} = await generateAccessTokenAndRefreshToken(user._id)
 
     //Now we have to send data to user, We must filter out irrelevat information and perform security measures
-    const loggedInUser = user.select("-password -refreshToken")
+    const {_id, username_, fullName_, email_ } = user.toObject()
+    const loggedInUser = {
+        username: username_,
+        _id,
+        fullName_,
+        email_
+    }
+    
+    console.log("select func run over ...")
 
     //Sending access token cookies:
     const options= {
@@ -241,8 +252,61 @@ const logoutUser = asyncHandler(async(req, res)=>{
 })
 
 
+const refreshAccessToken = asyncHandler(async(req, res)=>{
+    const incomingRefToken = req.cookie.refreshToken || req.body.refreshToken
+    
+    if(!incomingRefToken){
+        throw new apiError(401, "Unauthorised request")
+    }
+
+    try {
+        const decodedToken = jwt.verify(
+            incomingRefToken,
+            process.env.REFRESH_TOKEN_SECRET
+        )
+        
+        const user = await User.findById(decodedToken?._id)
+    
+        if(!user){
+            throw new apiError(401, "Session expired")
+    
+        }
+    
+        if(incomingRefToken !== user?.refreshToken){
+            throw new apiError(401, "refresh token is exppired or used")
+    
+        }
+    
+        const {newAcessToken, newRefreshToken} = await generateAccessTokenAndRefreshToken(user?._id)
+    
+        options = {
+            httpOnly:true,
+            secure: true
+        }
+        return res
+        .status(200)
+        .cookie("acessToken",newAcessToken, options)
+        .cookie("refreshToken", newRefreshToken, options)
+        .json(
+            new apiResponse(
+                200,
+                {newAcessToken, newRefreshToken,},
+                "Access token refreshed"
+            )
+        )
+    } catch (error) {
+        throw new apiError(401, "Invalid refresh token or problem in refreshing token")
+    }
+})
+
+
+
+
 export {
     userRegister,
     loginUser,
-    logoutUser
+    logoutUser,
+    refreshAccessToken
 }
+
+

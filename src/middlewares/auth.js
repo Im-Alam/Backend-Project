@@ -4,7 +4,7 @@
  *      Else Not possible to logout if user is not logged in
  */
 
-import { apiError } from "../utils/APIError";
+import { apiError } from "../utils/APIError.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import jwt from "jsonwebtoken";
 import { User } from "../model/user.model.js";
@@ -17,7 +17,7 @@ export const verifyJWT = asyncHandler(async(req, _, next)=>{//_ is used in place
         //We can get acessToke from cookies because we set it in cookies in user controller during login
         //Or we can  get it through custom header sent by user, with name authorization 
         const token = req.cookies?.accessToken || req.header("Authorization")?.replace("Bearer ","") //bearer is prefix of header sent as authorization
-    
+        console.log(token)
         if(!token){
             throw new apiError(401, "Unauthoried access")
         }
