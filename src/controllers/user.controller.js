@@ -300,13 +300,102 @@ const refreshAccessToken = asyncHandler(async(req, res)=>{
 })
 
 
+const updatePassword = asyncHandler(async(req, res)=>{
+    //Get detail for update from frontend using req.body
+    const {oldPassword, newPassword} = req.body
+
+    //Check if user is logged in..
+    const user = await User.findById(req.user?._id)
+
+    //Verify the oldPassword if its correct for current user
+    const isPWCorrect = await User.isCorrectPassword(oldPassword)
+
+    if(!isPWCorrect){
+        throw new apiError(400, "Invalid password")
+    }
+
+    user.password = newPassword
+    await user.save({validatBeforeSave:false})
+
+    return res
+    .status(200)
+    .json(new apiResponse(200. {newPassword: newPassword}, "Pasword changed sucessfully"))
+
+})
+
+
+
+const currentUser = asyncHandler(async(req, res)=>{
+    return res
+    .status(200)
+    .json(200, req.user, "Current User detail fetched")
+})
+
+
+
+const updateAccountDetail = asyncHandler(async(req, res)=>{
+    const {fullName, email} = req.body
+
+    if(!fullName && !email){
+        throw new apiError(400, "All fields required")
+
+    }
+
+    const user  = User.findByIdAndUpdate(
+        req.user?._id,
+        {
+            $set:{fullName:fullName, email:email}
+        },
+        {new:true}
+    ).select("-password")
+    
+    return res
+    .status(200)
+    .json(new apiResponse(200, user, "Account details updated"))
+
+})
+
+
+
+const updateUserAvatar = asyncHandler(async(req, res)=>{
+    /**
+     * get file from frontend and load it to temporary local folder
+     *  req.files
+     * verify if user is logged in
+     * upload on cloudinary and get the cloudinary url
+     * update the avatar field of database with new url
+     */
+    const newAvatarFile = req.file?.path
+
+    if(!newAvatarFile){
+        throw new apiError(400, "Upload new avatar file")
+    }
+
+    const newCloudUrl = uploadOnCloudinary(avata)
+    const user = await User.findByIdAndUpdate(
+        req.user?._id,
+        {
+            $set : {avatar: newCloudUrl?.url}
+        },
+        {new : true}
+
+    ).select("-password")
+
+    return res
+    .status(200)
+    .json(new apiResponse(200, user, "avatar upadated sucessfully"))
+})
 
 
 export {
     userRegister,
     loginUser,
     logoutUser,
-    refreshAccessToken
+    refreshAccessToken,
+    updatePassword,
+    currentUser,
+    updateAccountDetail,
+    updateUserAvatar
 }
 
 
